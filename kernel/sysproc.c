@@ -103,3 +103,13 @@ uint64 sys_trace(void)
   argint(1, &mask); // stores 2nd argument in mask
   return trace(pid, mask);
 }
+
+// calls the system calls after getting arguments
+uint64 sys_set_priority(void)
+{
+  int pid;
+  int priority;
+  argint(1, &pid);
+  argint(0, &priority);
+  return set_priority(priority, pid);
+}

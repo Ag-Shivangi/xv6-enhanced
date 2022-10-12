@@ -22,5 +22,4 @@
 #define SYS_close 21
 // added new sys calls
 #define SYS_trace 22
-// #define SYS_sigalarm 23
-// #define SYS_sigreturn 24
+#define SYS_set_priority 23

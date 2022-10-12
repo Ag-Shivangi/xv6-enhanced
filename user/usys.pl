@@ -37,3 +37,4 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("trace"); # Adding trace to sys calls
+entry("set_priority"); # Adding set_priority to sys calls

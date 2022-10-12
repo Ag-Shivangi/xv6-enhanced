@@ -106,6 +106,12 @@ struct proc
   int toTrace;          // Do we have to trace this process
   int traceMask;        // Syscalls to trace if toTrace is 1
   int inTime;           // Time at which process was started
+  int staticPriority;   // Static priority for PBS scheduler
+  int niceness;         // Niceness for PBS scheduler
+  int nRuns;            // Number of times process has been selected by scheduler
+  int lastSleepTime;    // Last time process was put to sleep
+  int totalSleepTime;   // Total sleep time of the process
+  int lastScheduled;    // Last time process was scheduled by the scheduler
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process

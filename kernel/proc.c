@@ -257,6 +257,12 @@ void userinit(void)
   // Set default values of trace when process starts
   p->toTrace = 0;
   p->traceMask = 0;
+  p->staticPriority = 60;
+  p->niceness = 5;
+  p->totalSleepTime = 0;
+  p->lastSleepTime = 0;
+  p->lastScheduled = 0;
+  p->nRuns = 0;
 
   // Set when process was started
   p->inTime = ticks;
@@ -467,6 +473,15 @@ int min(int a, int b)
   return b;
 }
 
+int max(int a, int b)
+{
+  if (a < b)
+  {
+    return b;
+  }
+  return a;
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -536,6 +551,72 @@ void scheduler(void)
           c->proc = 0;
         }
         release(&p->lock);
+      }
+    }
+    else if (SCHED[0] == 'P')
+    {
+      // Implement priority based scheduling
+      int maxDP = -1, pidProc = 0, procNruns = 0, bestInTime = 0;
+      for (p = proc; p < &proc[NPROC]; p++)
+      {
+        acquire(&p->lock);
+        if (p->state == RUNNABLE)
+        {
+          int dp = max(0, min(p->staticPriority - p->niceness + 5, 100));
+          if (dp > maxDP)
+          {
+            maxDP = dp;
+            pidProc = p->pid;
+            procNruns = p->nRuns;
+            bestInTime = p->inTime;
+          }
+          else if (dp == maxDP)
+          {
+            if (p->nRuns < procNruns)
+            {
+              maxDP = dp;
+              pidProc = p->pid;
+              procNruns = p->nRuns;
+              bestInTime = p->inTime;
+            }
+            else if (p->inTime > bestInTime)
+            {
+              maxDP = dp;
+              pidProc = p->pid;
+              procNruns = p->nRuns;
+              bestInTime = p->inTime;
+            }
+          }
+        }
+        release(&p->lock);
+      }
+      // printf("Scheduler selected pid=%d\n", pidProc);
+      for (p = proc; p < &proc[NPROC]; p++)
+      {
+        int toBreak = 0;
+        acquire(&p->lock);
+        if (p->state == RUNNABLE && p->pid == pidProc)
+        {
+          toBreak = 1;
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          int here = ticks;
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+          here = ticks - here;
+          p->niceness = (p->totalSleepTime / (p->totalSleepTime + here)) * 10;
+          p->totalSleepTime = 0;
+          p->nRuns += 1;
+        }
+        release(&p->lock);
+        if (toBreak)
+          break;
       }
     }
   }
@@ -617,6 +698,7 @@ void sleep(void *chan, struct spinlock *lk)
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
+  p->lastSleepTime = ticks;
 
   sched();
 
@@ -642,6 +724,7 @@ void wakeup(void *chan)
       if (p->state == SLEEPING && p->chan == chan)
       {
         p->state = RUNNABLE;
+        p->totalSleepTime += (ticks - p->lastSleepTime);
       }
       release(&p->lock);
     }
@@ -716,6 +799,29 @@ int trace(int pid, int mask)
     }
   }
   return 1;
+}
+
+int set_priority(int new_priority, int pid)
+{
+  struct proc *p;
+  int breaker = 0; // checks if pid has been encountered
+  int ret = -1;
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->pid == pid)
+    {
+      ret = p->staticPriority;
+      p->staticPriority = new_priority;
+      breaker = 1;
+    }
+    release(&p->lock);
+    if (breaker)
+    {
+      break;
+    }
+  }
+  return ret;
 }
 
 // Copy to either a user address, or kernel address,
