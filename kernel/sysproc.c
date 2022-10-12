@@ -12,6 +12,7 @@ sys_exit(void)
   int n;
   argint(0, &n);
   exit(n);
+  // need for exit and return ??
   return 0; // not reached
 }
 
@@ -44,7 +45,9 @@ sys_sbrk(void)
   argint(0, &n);
   addr = myproc()->sz;
   if (growproc(n) < 0)
+  {
     return -1;
+  }
   return addr;
 }
 
@@ -79,8 +82,7 @@ sys_kill(void)
   return kill(pid);
 }
 
-// return how many clock tick interrupts have occurred
-// since start.
+// return how many clock tick interrupts have occurred since start.
 uint64
 sys_uptime(void)
 {
