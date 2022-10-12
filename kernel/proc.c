@@ -257,6 +257,7 @@ void userinit(void)
   // Set default values of trace when process starts
   p->toTrace = 0;
   p->traceMask = 0;
+  p->nTickets = 1;
   p->staticPriority = 60;
   p->niceness = 5;
   p->totalSleepTime = 0;
@@ -343,6 +344,14 @@ int fork(void)
   // Set trace values for children
   np->toTrace = p->toTrace;
   np->traceMask = p->traceMask;
+  np->inTime = ticks;
+  np->nTickets = p->nTickets;
+  np->staticPriority = 60;
+  np->niceness = 5;
+  np->nRuns = 0;
+  np->lastScheduled = 0;
+  np->lastSleepTime = 0;
+  np->totalSleepTime = 0;
   release(&np->lock);
 
   return pid;
@@ -462,6 +471,41 @@ int wait(uint64 addr)
     // Wait for a child to exit.
     sleep(p, &wait_lock); // DOC: wait-sleep
   }
+}
+
+// from FreeBSD.
+int do_rand(unsigned long *ctx)
+{
+  /*
+   * Compute x = (7^5 * x) mod (2^31 - 1)
+   * without overflowing 31 bits:
+   *      (2^31 - 1) = 127773 * (7^5) + 2836
+   * From "Random number generators: good ones are hard to find",
+   * Park and Miller, Communications of the ACM, vol. 31, no. 10,
+   * October 1988, p. 1195.
+   */
+  long hi, lo, x;
+
+  /* Transform to [1, 0x7ffffffe] range. */
+  x = (*ctx % 0x7ffffffe) + 1;
+  hi = x / 127773;
+  lo = x % 127773;
+  x = 16807 * lo - 2836 * hi;
+  if (x < 0)
+    x += 0x7fffffff;
+  /* Transform to [0, 0x7ffffffd] range. */
+  x--;
+  *ctx = x;
+  return (x);
+}
+
+unsigned long rand_next = 1;
+
+int rand(void)
+{
+  int ret = (do_rand(&rand_next));
+  rand_next += 1;
+  return ret;
 }
 
 int min(int a, int b)
@@ -617,6 +661,73 @@ void scheduler(void)
         release(&p->lock);
         if (toBreak)
           break;
+      }
+    }
+    else if (SCHED[0] == 'M')
+    {
+      // Implemeted MLFQ Scheduler
+    }
+    else if (SCHED[0] == 'L')
+    {
+      // Implemeted LBS Scheduler
+      int totalTickets = 0;
+      for (p = proc; p < &proc[NPROC]; p++)
+      {
+        acquire(&p->lock);
+        if (p->state == RUNNABLE)
+        {
+          totalTickets += p->nTickets;
+        }
+        release(&p->lock);
+      }
+      if (totalTickets > 0)
+      {
+        int generatedticket = rand() % totalTickets;
+        int ticketcounter = -1;
+        int toBreak = 0;
+        for (p = proc; p < &proc[NPROC]; p++)
+        {
+          acquire(&p->lock);
+          if (p->state == RUNNABLE)
+          {
+            ticketcounter += p->nTickets;
+            if (ticketcounter >= generatedticket)
+            {
+              // Switch to chosen process.  It is the process's job
+              // to release its lock and then reacquire it
+              // before jumping back to us.
+              p->state = RUNNING;
+              c->proc = p;
+              swtch(&c->context, &p->context);
+              // Process is done running for now.
+              // It should have changed its p->state before coming back.
+              c->proc = 0;
+              toBreak = 1;
+            }
+          }
+          release(&p->lock);
+          if (toBreak)
+          {
+            break;
+          }
+        }
+      }
+      else
+      {
+        acquire(&p->lock);
+        if (p->state == RUNNABLE)
+        {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
       }
     }
   }
@@ -824,6 +935,13 @@ int set_priority(int new_priority, int pid)
   return ret;
 }
 
+int settickets(int newtickets)
+{
+  struct proc *p = myproc();
+  int ret = p->nTickets;
+  p->nTickets = newtickets;
+  return ret;
+}
 // Copy to either a user address, or kernel address,
 // depending on usr_dst.
 // Returns 0 on success, -1 on error.

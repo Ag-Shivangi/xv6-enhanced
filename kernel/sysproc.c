@@ -113,3 +113,10 @@ uint64 sys_set_priority(void)
   argint(0, &priority);
   return set_priority(priority, pid);
 }
+
+uint64 sys_settickets(void)
+{
+  int tickets;
+  argint(0, &tickets); // stores 1st argument in tickets
+  return settickets(tickets);
+}

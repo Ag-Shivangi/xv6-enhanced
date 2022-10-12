@@ -108,6 +108,7 @@ int either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void procdump(void);
 int trace(int, int);        // Declared the trace syscall
 int set_priority(int, int); // Declared the set_priority syscall
+int settickets(int);        // Declared the settickets syscall
 
 // swtch.S
 void swtch(struct context *, struct context *);

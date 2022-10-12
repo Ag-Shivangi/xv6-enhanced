@@ -38,3 +38,4 @@ entry("sleep");
 entry("uptime");
 entry("trace"); # Adding trace to sys calls
 entry("set_priority"); # Adding set_priority to sys calls
+entry("settickets"); # Adding settickets to sys calls

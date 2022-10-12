@@ -23,3 +23,4 @@
 // added new sys calls
 #define SYS_trace 22
 #define SYS_set_priority 23
+#define SYS_settickets 24

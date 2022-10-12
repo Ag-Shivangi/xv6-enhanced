@@ -99,6 +99,7 @@ extern uint64 sys_mkdir(void);
 extern uint64 sys_close(void);
 extern uint64 sys_trace(void);        // declared helper function
 extern uint64 sys_set_priority(void); // declared helper function
+extern uint64 sys_settickets(void);   // declared helper function
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -126,6 +127,7 @@ static uint64 (*syscalls[])(void) = {
     [SYS_close] sys_close,
     [SYS_trace] sys_trace,               // added trace to look up table
     [SYS_set_priority] sys_set_priority, // added set_priority to look up table
+    [SYS_settickets] sys_settickets,     // added settickets to look up table
 };
 
 // name of the syscall
@@ -153,6 +155,7 @@ static char *syscalls_name[] = {
     [SYS_close] "close",
     [SYS_trace] "trace",               // added trace to look up table
     [SYS_set_priority] "set_priority", // added set_priority to look up table
+    [SYS_settickets] "settickets",     // added settickets to look up table
 };
 
 // number of arguments
@@ -179,7 +182,8 @@ static int syscalls_args[] = {
     [SYS_mkdir] 1,
     [SYS_close] 1,
     [SYS_trace] 2,        // added trace to look up table
-    [SYS_set_priority] 2, // added trace to look up table
+    [SYS_set_priority] 2, // added set_priority to look up table
+    [SYS_settickets] 1,   // added settickets to look up table
 };
 
 void syscall(void)
