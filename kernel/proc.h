@@ -105,6 +105,7 @@ struct proc
   int pid;              // Process ID
   int toTrace;          // Do we have to trace this process
   int traceMask;        // Syscalls to trace if toTrace is 1
+  int inTime;           // Time at which process was started
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process
@@ -119,3 +120,5 @@ struct proc
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 };
+// added global variable for type of scheduler
+// int SCHEDULER;

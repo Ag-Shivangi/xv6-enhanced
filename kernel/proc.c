@@ -258,6 +258,9 @@ void userinit(void)
   p->toTrace = 0;
   p->traceMask = 0;
 
+  // Set when process was started
+  p->inTime = ticks;
+
   release(&p->lock);
 }
 
@@ -455,6 +458,15 @@ int wait(uint64 addr)
   }
 }
 
+int min(int a, int b)
+{
+  if (a < b)
+  {
+    return a;
+  }
+  return b;
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -462,6 +474,7 @@ int wait(uint64 addr)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
+
 void scheduler(void)
 {
   struct proc *p;
@@ -472,24 +485,58 @@ void scheduler(void)
   {
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
-
-    for (p = proc; p < &proc[NPROC]; p++)
+    if (SCHED[0] == 'D')
     {
-      acquire(&p->lock);
-      if (p->state == RUNNABLE)
+      for (p = proc; p < &proc[NPROC]; p++)
       {
-        // Switch to chosen process.  It is the process's job
-        // to release its lock and then reacquire it
-        // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        swtch(&c->context, &p->context);
+        acquire(&p->lock);
+        if (p->state == RUNNABLE)
+        {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
 
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
       }
-      release(&p->lock);
+    }
+    else if (SCHED[0] == 'F')
+    {
+      // implement FCFS scheduler
+      int minTime = ticks + 1000;
+      for (p = proc; p < &proc[NPROC]; p++)
+      {
+        acquire(&p->lock);
+        if (p->state == RUNNABLE)
+        {
+          minTime = min(minTime, p->inTime);
+        }
+        release(&p->lock);
+      }
+      for (p = proc; p < &proc[NPROC]; p++)
+      {
+        acquire(&p->lock);
+        if (p->state == RUNNABLE && p->inTime == minTime)
+        {
+          // Switch to chosen process.  It is the process's job
+          // to release its lock and then reacquire it
+          // before jumping back to us.
+          p->state = RUNNING;
+          c->proc = p;
+          swtch(&c->context, &p->context);
+
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+        }
+        release(&p->lock);
+      }
     }
   }
 }

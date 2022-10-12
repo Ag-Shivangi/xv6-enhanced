@@ -49,8 +49,14 @@ TOOLPREFIX := $(shell if riscv64-unknown-elf-objdump -i 2>&1 | grep 'elf64-big' 
 endif
 
 QEMU = qemu-system-riscv64
+#sets scheduler to default if none provided
+ifndef SCHEDULER
+SCHEDULER = DEFAULT
+endif
+#passes scheduler as flag to compile command(cc)
+SCHEDFLAG = -D SCHED=\"$(SCHEDULER)\"
+CC = $(TOOLPREFIX)gcc $(SCHEDFLAG)
 
-CC = $(TOOLPREFIX)gcc
 AS = $(TOOLPREFIX)gas
 LD = $(TOOLPREFIX)ld
 OBJCOPY = $(TOOLPREFIX)objcopy
