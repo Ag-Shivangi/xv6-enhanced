@@ -136,6 +136,9 @@ UPROGS=\
 	$U/_sh\
 	$U/_strace\
 	$U/_stressfs\
+	$U/_test_fcfs\
+	$U/_test_lbs\
+	$U/_test_pbs\
 	$U/_usertests\
 	$U/_grind\
 	$U/_wc\
