@@ -369,7 +369,9 @@ int fork(void)
   np->lastUpdate = ticks;
   np->curQtime = 0;
   for (int i = 0; i < 5; i++)
+  {
     np->qTimes[i] = 0;
+  }
 
   release(&np->lock);
 
@@ -463,10 +465,10 @@ int wait(uint64 addr)
         if (pp->state == ZOMBIE)
         {
           // Found one.
-          if (SCHED[0] == 'M')
-          {
-            dequeue(pp->currQueue, pp);
-          }
+          // if (SCHED[0] == 'M')
+          // {
+          //   dequeue(pp->currQueue, pp);
+          // }
           pid = pp->pid;
           if (addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
                                    sizeof(pp->xstate)) < 0)
@@ -556,7 +558,7 @@ int max(int a, int b)
 const int qAllowed[] = {1, 2, 4, 8, 16}; // allowed length of slice
 struct proc *mlfqueue[5][NPROC];         // queues
 int qlen[5] = {0, 0, 0, 0, 0};           // length of queues
-int AGELIMIT = 20;                       // age limit for MLFQ
+int AGELIMIT = 50;                       // age limit for MLFQ
 
 // inserts process p in queue qlevel
 int enqueue(int qlevel, struct proc *p)
@@ -749,16 +751,19 @@ void scheduler(void)
           release(&p->lock);
         }
       }
+      int init = 1;
       for (int i = 0; i <= 5; i++)
       {
-        if (i == 5)
+        if (i == 5 && init)
         {
           for (p = proc; p < &proc[NPROC]; p++)
           {
             int toBreak = 0;
             acquire(&p->lock);
+
             if (p->state == RUNNABLE)
             {
+              // printf("Running from here?\n");
               toBreak = 1;
               // Switch to chosen process.  It is the process's job
               // to release its lock and then reacquire it
@@ -780,6 +785,7 @@ void scheduler(void)
         else if (qlen[i] > 0)
         {
           p = mlfqueue[i][0];
+          init = 0;
           acquire(&p->lock);
           dequeue(i, p);
           if (p->state == RUNNABLE)
@@ -808,7 +814,12 @@ void scheduler(void)
                 p->toUpdate = 0;
               }
               p->curQtime = 0;
+              // printf("Putting %d in %d\n", p->pid, p->currQueue);
               enqueue(p->currQueue, p);
+            }
+            else
+            {
+              printf("hai toba\n");
             }
           }
           release(&p->lock);
@@ -1039,6 +1050,7 @@ int killed(struct proc *p)
 
   acquire(&p->lock);
   k = p->killed;
+  dequeue(p->currQueue, p);
   release(&p->lock);
   return k;
 }
@@ -1070,6 +1082,8 @@ int trace(int pid, int mask)
   return 1;
 }
 
+// Set priority of the process with given pid to new_priority
+// Relevant only for PBS
 int set_priority(int new_priority, int pid)
 {
   struct proc *p;
@@ -1093,6 +1107,8 @@ int set_priority(int new_priority, int pid)
   return ret;
 }
 
+// Set tickets of the process calling it to newtickets
+// Relevant only for LBS
 int settickets(int newtickets)
 {
   struct proc *p = myproc();
@@ -1101,6 +1117,7 @@ int settickets(int newtickets)
   return ret;
 }
 
+// Updates the wait time of the processes
 void updateWTime(void)
 {
   for (struct proc *p = proc; p < &proc[NPROC]; p++)
@@ -1109,16 +1126,59 @@ void updateWTime(void)
     if (p->state == RUNNABLE)
     {
       p->wTime++;
+      // printf("Updating waittime %d of process %d\n", p->wTime, p->pid);
     }
     release(&p->lock);
   }
 }
 
+// Sets queue update variable
+// Relevant for MLFQ
 void updateQueue(struct proc *p)
 {
   acquire(&p->lock);
   p->toUpdate = 1;
   release(&p->lock);
+}
+
+// Get running time of the process with given pid
+int getRunTime(int pid)
+{
+  struct proc *p;
+  int ret = -1;
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->pid == pid)
+    {
+      ret = p->runTime;
+      // printf("FFFFFFFFFFFFF: %d %d\n", p->runTime, ret);
+      release(&p->lock);
+      return ret;
+    }
+    release(&p->lock);
+  }
+  return ret;
+}
+
+// Get waiting time of the process with given pid
+int getWaitTime(int pid)
+{
+  struct proc *p;
+  int ret = -1;
+  for (p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->pid == pid)
+    {
+      ret = p->wTime;
+      // printf("LMAOOOOOO: %d %d\n", p->wTime, ret);
+      release(&p->lock);
+      return ret;
+    }
+    release(&p->lock);
+  }
+  return ret;
 }
 
 // Copy to either a user address, or kernel address,
@@ -1160,26 +1220,12 @@ int either_copyin(void *dst, int user_src, uint64 src, uint64 len)
 // No lock to avoid wedging a stuck machine further.
 void procdump(void)
 {
-  static char *states[] = {
-      [UNUSED] "unused",
-      [USED] "used",
-      [SLEEPING] "sleep ",
-      [RUNNABLE] "runble",
-      [RUNNING] "run   ",
-      [ZOMBIE] "zombie"};
   struct proc *p;
-  char *state;
-
-  printf("\n");
   for (p = proc; p < &proc[NPROC]; p++)
   {
     if (p->state == UNUSED)
       continue;
-    if (p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
-    else
-      state = "???";
-    printf("%d %s %s", p->pid, state, p->name);
+    printf("%d %d %d", p->pid, ticks, p->currQueue);
     printf("\n");
   }
 }

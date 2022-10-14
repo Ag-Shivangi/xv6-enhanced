@@ -120,3 +120,17 @@ uint64 sys_settickets(void)
   argint(0, &tickets); // stores 1st argument in tickets
   return settickets(tickets);
 }
+
+uint64 sys_getruntime(void)
+{
+  int pid;
+  argint(0, &pid);
+  return getRunTime(pid);
+}
+
+uint64 sys_getwaittime(void)
+{
+  int pid;
+  argint(0, &pid);
+  return getWaitTime(pid);
+}

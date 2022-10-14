@@ -9,12 +9,7 @@ int child_func()
     for (int a = 0; a < 1000000000; a++)
     {
         x += a / 2;
-        if (a % 10000 == 0)
-        {
-            // printf("Currently running pid=%d\n", pidhere);
-        }
     }
-    sleep(10 + pidhere);
     int runtime = getRunTime(pidhere);
     int waittime = getWaitTime(pidhere);
     printf("ProcessID %d, Runtime %d, Waittime %d\n", pidhere, runtime, waittime);

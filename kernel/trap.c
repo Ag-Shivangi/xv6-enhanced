@@ -202,10 +202,15 @@ void clockintr()
       cpus[i].proc->runTime++;
       cpus[i].proc->qTimes[cpus[i].proc->currQueue]++;
       cpus[i].proc->curQtime++;
-      printf("CPU ID: %d\n", i);
-      printf("Process ID: %d\n", cpus[i].proc->pid);
-      printf("Process Queue: %d\n", cpus[i].proc->currQueue);
-      printf("Process Queue Time: %d\n", cpus[i].proc->curQtime);
+      // if (ticks % 5 == 0)
+      // {
+      //   procdump();
+      // }
+      // printf("Updating runtime %d of pid %d\n", cpus[i].proc->runTime, cpus[i].proc->pid);
+      // printf("CPU ID: %d\n", i);
+      // printf("Process ID: %d\n", cpus[i].proc->pid);
+      // printf("Process Queue: %d\n", cpus[i].proc->currQueue);
+      // printf("Process Queue Time: %d\n", cpus[i].proc->curQtime);
       // printf("Process ID: %d, currQtime: %d\n", cpus[i].proc->pid, cpus[i].proc->curQtime);
     }
   }

@@ -24,3 +24,5 @@
 #define SYS_trace 22
 #define SYS_set_priority 23
 #define SYS_settickets 24
+#define SYS_getRunTime 25
+#define SYS_getWaitTime 26

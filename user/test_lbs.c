@@ -7,15 +7,15 @@ int child_func(int tickets)
     settickets(tickets);
     volatile int x = 0;
     int pidhere = getpid();
-    // printf("Tickets=%d, pid=%d\n", tickets, pidhere);
     sleep(10);
-    for (int a = 0; a < 100000; a++)
+    for (int a = 0; a < 1000000000; a++)
     {
-        x += a;
-        // if (a % 10 == 0)
-        printf("%d\n", pidhere);
-        // sleep(1);
+        x += a / 3;
     }
+    int runtime = getRunTime(pidhere);
+    int waittime = getWaitTime(pidhere);
+    printf("ProcessID %d, Runtime %d, Waittime %d\n", pidhere, runtime, waittime);
+
     exit(0);
 }
 
@@ -30,7 +30,7 @@ int main()
     int pid2 = fork();
     if (pid2 == 0)
     {
-        child_func(85);
+        child_func(15);
     }
     int ret1 = wait(0);
     int ret2 = wait(0);

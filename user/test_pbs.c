@@ -6,15 +6,13 @@ int child_func()
 {
     volatile int x = 0;
     int pidhere = getpid();
-    for (int a = 0; a < 1000; a++)
+    for (int a = 0; a < 1000000000; a++)
     {
-        x += a;
-        printf("Currently running pid=%d\n", pidhere);
-        if (a % 100 == 0)
-        {
-            sleep(5);
-        }
+        x += a / 4;
     }
+    int runtime = getRunTime(pidhere);
+    int waittime = getWaitTime(pidhere);
+    printf("ProcessID %d, Runtime %d, Waittime %d\n", pidhere, runtime, waittime);
     exit(0);
 }
 

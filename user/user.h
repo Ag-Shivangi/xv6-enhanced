@@ -25,6 +25,8 @@ int uptime(void);
 int trace(int, int);
 int set_priority(int, int);
 int settickets(int);
+int getRunTime(int);
+int getWaitTime(int);
 
 // ulib.c
 int stat(const char *, struct stat *);

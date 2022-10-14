@@ -113,6 +113,8 @@ void updateWTime(void);          // Update wait time of the process
 void updateQueue(struct proc *); // Update queue of the process
 int enqueue(int, struct proc *); // Add process to queue
 int dequeue(int, struct proc *); // Remove process from queue
+int getRunTime(int);             // Get runtime of the process
+int getWaitTime(int);            // Get wait time of the process
 
 // swtch.S
 void swtch(struct context *, struct context *);
