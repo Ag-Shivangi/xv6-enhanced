@@ -102,6 +102,8 @@ extern uint64 sys_set_priority(void); // declared helper function
 extern uint64 sys_settickets(void);   // declared helper function
 extern uint64 sys_getruntime(void);   // declared helper function
 extern uint64 sys_getwaittime(void);  // declared helper function
+extern uint64 sys_sigalarm(void);     // declared helper function
+extern uint64 sys_sigreturn(void);    // declared helper function
 
 // An array mapping syscall numbers from syscall.h
 // to the function that handles the system call.
@@ -132,6 +134,8 @@ static uint64 (*syscalls[])(void) = {
     [SYS_settickets] sys_settickets,     // added settickets to look up table
     [SYS_getRunTime] sys_getruntime,     // added getruntime to look up table
     [SYS_getWaitTime] sys_getwaittime,   // added getwaittime to look up table
+    [SYS_sigalarm] sys_sigalarm,
+    [SYS_sigreturn] sys_sigreturn,
 
 };
 
@@ -163,6 +167,8 @@ static char *syscalls_name[] = {
     [SYS_settickets] "settickets",     // added settickets to look up table
     [SYS_getRunTime] "getRunTime",     // added getruntime to look up table
     [SYS_getWaitTime] "getWaitTime",   // added getwaittime to look up table
+    [SYS_sigalarm] "sigalarm",
+    [SYS_sigreturn] "sigreturn",
 
 };
 
@@ -194,7 +200,8 @@ static int syscalls_args[] = {
     [SYS_settickets] 1,   // added settickets to look up table
     [SYS_getRunTime] 1,   // added getruntime to look up table
     [SYS_getWaitTime] 1,  // added getwaittime to look up table
-
+    [SYS_sigalarm] 0,
+    [SYS_sigreturn] 0,
 };
 
 void syscall(void)

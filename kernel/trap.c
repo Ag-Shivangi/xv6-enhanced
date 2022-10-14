@@ -66,7 +66,25 @@ void usertrap(void)
   }
   else if ((which_dev = devintr()) != 0)
   {
-    // ok
+    // lab 6 alarm
+
+        if (which_dev == 2 && p->alarmOn == 0)
+    {
+      // Save trapframe
+      struct trapframe *Tf = kalloc();
+      p->alarmOn = 1;
+      memmove(Tf, p->trapframe, PGSIZE);
+      p->alarmTf = Tf;
+      p->curTicks++;
+      // printf("%d\n", p->curTicks);
+      if (p->curTicks >= p->ticks)
+        p->trapframe->epc = p->handler;
+      else
+      {
+        p->alarmOn = 0;
+        kfree(Tf);
+      }
+    }
   }
   else
   {

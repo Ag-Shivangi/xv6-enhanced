@@ -134,3 +134,26 @@ uint64 sys_getwaittime(void)
   argint(0, &pid);
   return getWaitTime(pid);
 }
+
+uint64 sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+  memmove(p->trapframe, p->alarmTf, PGSIZE);
+
+  kfree(p->alarmTf);
+  p->alarmTf = 0;
+  p->alarmOn = 0;
+  p->curTicks = 0;
+  return p->trapframe->a0;
+}
+
+uint64 sys_sigalarm(void)
+{
+  uint64 addr;
+  int ticks;
+  argint(0, &ticks);
+  argaddr(1, &addr);
+  myproc()->ticks = ticks;
+  myproc()->handler = addr;
+  return 0;
+}

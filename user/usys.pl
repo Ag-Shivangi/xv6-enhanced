@@ -41,3 +41,5 @@ entry("set_priority"); # Adding set_priority to sys calls
 entry("settickets"); # Adding settickets to sys calls
 entry("getRunTime"); # Adding getRunTime to sys calls
 entry("getWaitTime"); # Adding getWaitTime to sys calls
+entry("sigalarm");
+entry("sigreturn");

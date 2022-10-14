@@ -135,6 +135,14 @@ struct proc
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  // sigalarm tryhard
+  uint64 handler;
+  int ticks;
+  int curTicks;
+  struct trapframe *alarmTf; // cache the trapframe when timer fires
+  int alarmOn;
+  int lastAlarm;
 };
 // added global variable for type of scheduler
 // int SCHEDULER;

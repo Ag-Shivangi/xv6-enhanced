@@ -26,3 +26,5 @@
 #define SYS_settickets 24
 #define SYS_getRunTime 25
 #define SYS_getWaitTime 26
+#define SYS_sigalarm 27
+#define SYS_sigreturn 28
