@@ -114,6 +114,14 @@ struct proc
   int lastSleepTime;  // Last time process was put to sleep
   int totalSleepTime; // Total sleep time of the process
   int lastScheduled;  // Last time process was scheduled by the scheduler
+  // variables for MLFQ
+  int currQueue;  // current queue level of the process
+  int lastUpdate; // last time the priority was changed
+  int qTimes[5];  // time spent in each queue
+  int curQtime;   // time spent in current queue
+  int wTime;      // time spent in waiting by the process
+  int toUpdate;   // flag for whether queue needs to be updated
+  int runTime;    // total run time of the process
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process

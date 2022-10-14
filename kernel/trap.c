@@ -79,9 +79,23 @@ void usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt and scheduler is not FCFS.
-  if (which_dev == 2 && SCHED[0] != 'F')
-    yield();
-
+  int allowed[] = {1, 2, 4, 8, 16};
+  if (which_dev == 2)
+  {
+    if (SCHED[0] == 'M')
+    {
+      // printf("MLFQ Scheduler: %d %d %d\n", myproc()->currQueue, myproc()->curQtime, allowed[myproc()->currQueue]);
+      if (myproc()->curQtime >= allowed[myproc()->currQueue])
+      {
+        updateQueue(myproc());
+        yield();
+      }
+    }
+    else if (SCHED[0] != 'F')
+    {
+      yield();
+    }
+  }
   usertrapret();
 }
 
@@ -152,9 +166,22 @@ void kerneltrap()
   }
 
   // give up the CPU if this is a timer interrupt and scheduler is not FCFS.
-  if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING && SCHED[0] != 'F')
-    yield();
-
+  int allowed[] = {1, 2, 4, 8, 16};
+  if (which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
+  {
+    if (SCHED[0] == 'M')
+    {
+      if (myproc()->curQtime >= allowed[myproc()->currQueue])
+      {
+        updateQueue(myproc());
+        yield();
+      }
+    }
+    else if (SCHED[0] != 'F')
+    {
+      yield();
+    }
+  }
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.
   w_sepc(sepc);
@@ -165,7 +192,24 @@ void clockintr()
 {
   acquire(&tickslock);
   ticks++;
+  // printf("%d\n", ticks);
   wakeup(&ticks);
+  for (int i = 0; i < NCPU; i++)
+  {
+    // printf("CPU %d: %d\n", i, cpus[i].proc);
+    if (cpus[i].proc != 0 && cpus[i].proc->state == RUNNING)
+    {
+      cpus[i].proc->runTime++;
+      cpus[i].proc->qTimes[cpus[i].proc->currQueue]++;
+      cpus[i].proc->curQtime++;
+      printf("CPU ID: %d\n", i);
+      printf("Process ID: %d\n", cpus[i].proc->pid);
+      printf("Process Queue: %d\n", cpus[i].proc->currQueue);
+      printf("Process Queue Time: %d\n", cpus[i].proc->curQtime);
+      // printf("Process ID: %d, currQtime: %d\n", cpus[i].proc->pid, cpus[i].proc->curQtime);
+    }
+  }
+  updateWTime();
   release(&tickslock);
 }
 

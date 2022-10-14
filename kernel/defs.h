@@ -106,9 +106,13 @@ void yield(void);
 int either_copyout(int user_dst, uint64 dst, void *src, uint64 len);
 int either_copyin(void *dst, int user_src, uint64 src, uint64 len);
 void procdump(void);
-int trace(int, int);        // Declared the trace syscall
-int set_priority(int, int); // Declared the set_priority syscall
-int settickets(int);        // Declared the settickets syscall
+int trace(int, int);             // Declared the trace syscall
+int set_priority(int, int);      // Declared the set_priority syscall
+int settickets(int);             // Declared the settickets syscall
+void updateWTime(void);          // Update wait time of the process
+void updateQueue(struct proc *); // Update queue of the process
+int enqueue(int, struct proc *); // Add process to queue
+int dequeue(int, struct proc *); // Remove process from queue
 
 // swtch.S
 void swtch(struct context *, struct context *);

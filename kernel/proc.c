@@ -253,6 +253,10 @@ void userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  if (SCHED[0] == 'M')
+  {
+    enqueue(0, p);
+  }
 
   // Set default values of trace when process starts
   p->toTrace = 0;
@@ -264,6 +268,11 @@ void userinit(void)
   p->lastSleepTime = 0;
   p->lastScheduled = 0;
   p->nRuns = 0;
+  p->currQueue = 0; // lowest priority
+  p->lastUpdate = ticks;
+  p->curQtime = 0;
+  for (int i = 0; i < 5; i++)
+    p->qTimes[i] = 0;
 
   // Set when process was started
   p->inTime = ticks;
@@ -341,6 +350,10 @@ int fork(void)
 
   acquire(&np->lock);
   np->state = RUNNABLE;
+  if (SCHED[0] == 'M')
+  {
+    enqueue(0, np);
+  }
   // Set trace values for children
   np->toTrace = p->toTrace;
   np->traceMask = p->traceMask;
@@ -352,6 +365,12 @@ int fork(void)
   np->lastScheduled = 0;
   np->lastSleepTime = 0;
   np->totalSleepTime = 0;
+  np->currQueue = 0; // lowest priority
+  np->lastUpdate = ticks;
+  np->curQtime = 0;
+  for (int i = 0; i < 5; i++)
+    np->qTimes[i] = 0;
+
   release(&np->lock);
 
   return pid;
@@ -444,6 +463,10 @@ int wait(uint64 addr)
         if (pp->state == ZOMBIE)
         {
           // Found one.
+          if (SCHED[0] == 'M')
+          {
+            dequeue(pp->currQueue, pp);
+          }
           pid = pp->pid;
           if (addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
                                    sizeof(pp->xstate)) < 0)
@@ -474,6 +497,7 @@ int wait(uint64 addr)
 }
 
 // from FreeBSD.
+// Random number generator
 int do_rand(unsigned long *ctx)
 {
   /*
@@ -501,6 +525,7 @@ int do_rand(unsigned long *ctx)
 
 unsigned long rand_next = 1;
 
+// Wrapper function for rng
 int rand(void)
 {
   int ret = (do_rand(&rand_next));
@@ -508,6 +533,7 @@ int rand(void)
   return ret;
 }
 
+// Returns minimum of 2 integers
 int min(int a, int b)
 {
   if (a < b)
@@ -517,6 +543,7 @@ int min(int a, int b)
   return b;
 }
 
+// Returns maximum of 2 integers
 int max(int a, int b)
 {
   if (a < b)
@@ -525,7 +552,50 @@ int max(int a, int b)
   }
   return a;
 }
+// variables for mlfq
+const int qAllowed[] = {1, 2, 4, 8, 16}; // allowed length of slice
+struct proc *mlfqueue[5][NPROC];         // queues
+int qlen[5] = {0, 0, 0, 0, 0};           // length of queues
+int AGELIMIT = 20;                       // age limit for MLFQ
 
+// inserts process p in queue qlevel
+int enqueue(int qlevel, struct proc *p)
+{
+  // check if p is in qlevel
+  for (int i = 0; i < qlen[qlevel]; i++)
+  {
+    if (p->pid == mlfqueue[qlevel][i]->pid)
+    {
+      return 0;
+    }
+  }
+  mlfqueue[qlevel][qlen[qlevel]] = p;
+  qlen[qlevel]++;
+  p->lastUpdate = ticks;
+  p->currQueue = qlevel;
+  p->curQtime = 0;
+  return 1;
+}
+
+// removes process p from queue qlevel
+int dequeue(int qlevel, struct proc *p)
+{
+  // check if p is in qlevel
+  for (int i = 0; i < qlen[qlevel]; i++)
+  {
+    if (p->pid == mlfqueue[qlevel][i]->pid)
+    {
+      p->lastUpdate = ticks;
+      for (int j = i; j < qlen[qlevel] - 1; j++)
+      {
+        mlfqueue[qlevel][j] = mlfqueue[qlevel][j + 1];
+      }
+      qlen[qlevel]--;
+      return 1;
+    }
+  }
+  return 0;
+}
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -533,7 +603,6 @@ int max(int a, int b)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
-
 void scheduler(void)
 {
   struct proc *p;
@@ -666,6 +735,86 @@ void scheduler(void)
     else if (SCHED[0] == 'M')
     {
       // Implemeted MLFQ Scheduler
+      for (int i = 1; i < 5; i++)
+      {
+        for (int j = 0; j < qlen[i]; j++)
+        {
+          p = mlfqueue[i][j];
+          acquire(&p->lock);
+          if (ticks - p->lastUpdate > AGELIMIT)
+          {
+            dequeue(i, p);
+            enqueue(i - 1, p);
+          }
+          release(&p->lock);
+        }
+      }
+      for (int i = 0; i <= 5; i++)
+      {
+        if (i == 5)
+        {
+          for (p = proc; p < &proc[NPROC]; p++)
+          {
+            int toBreak = 0;
+            acquire(&p->lock);
+            if (p->state == RUNNABLE)
+            {
+              toBreak = 1;
+              // Switch to chosen process.  It is the process's job
+              // to release its lock and then reacquire it
+              // before jumping back to us.
+              p->state = RUNNING;
+              c->proc = p;
+              swtch(&c->context, &p->context);
+              // Process is done running for now.
+              // It should have changed its p->state before coming back.
+              c->proc = 0;
+            }
+            release(&p->lock);
+            if (toBreak)
+            {
+              break;
+            }
+          }
+        }
+        else if (qlen[i] > 0)
+        {
+          p = mlfqueue[i][0];
+          acquire(&p->lock);
+          dequeue(i, p);
+          if (p->state == RUNNABLE)
+          {
+            // printf("Going to run %d\n", p->pid);
+            p->nRuns += 1;
+            p->wTime = 0;
+            // Switch to chosen process.  It is the process's job
+            // to release its lock and then reacquire it
+            // before jumping back to us.
+            p->state = RUNNING;
+            c->proc = p;
+            swtch(&c->context, &p->context);
+
+            // Process is done running for now.
+            // It should have changed its p->state before coming back.
+            c->proc = 0;
+            if (p != 0 || p->state == RUNNABLE)
+            {
+              if (p->toUpdate == 1)
+              {
+                if (p->currQueue < 4)
+                {
+                  p->currQueue++;
+                }
+                p->toUpdate = 0;
+              }
+              p->curQtime = 0;
+              enqueue(p->currQueue, p);
+            }
+          }
+          release(&p->lock);
+          break;
+        }
+      }
     }
     else if (SCHED[0] == 'L')
     {
@@ -836,6 +985,11 @@ void wakeup(void *chan)
       {
         p->state = RUNNABLE;
         p->totalSleepTime += (ticks - p->lastSleepTime);
+        if (SCHED[0] == 'M')
+        {
+          p->curQtime = 0;
+          enqueue(p->currQueue, p);
+        }
       }
       release(&p->lock);
     }
@@ -859,6 +1013,10 @@ int kill(int pid)
       {
         // Wake process from sleep().
         p->state = RUNNABLE;
+        if (SCHED[0] == 'M')
+        {
+          enqueue(p->currQueue, p);
+        }
       }
       release(&p->lock);
       return 0;
@@ -942,6 +1100,27 @@ int settickets(int newtickets)
   p->nTickets = newtickets;
   return ret;
 }
+
+void updateWTime(void)
+{
+  for (struct proc *p = proc; p < &proc[NPROC]; p++)
+  {
+    acquire(&p->lock);
+    if (p->state == RUNNABLE)
+    {
+      p->wTime++;
+    }
+    release(&p->lock);
+  }
+}
+
+void updateQueue(struct proc *p)
+{
+  acquire(&p->lock);
+  p->toUpdate = 1;
+  release(&p->lock);
+}
+
 // Copy to either a user address, or kernel address,
 // depending on usr_dst.
 // Returns 0 on success, -1 on error.
